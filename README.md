@@ -196,6 +196,20 @@ Python parses each JSON line and applies ANSI-colored formatting.
 
 ---
 
+## Why WLRecon
+
+Most recon tools are black boxes. WLRecon was built during OSCP preparation
+to understand and replicate the internal logic of tools like ffuf and gobuster —
+not to replace them.
+
+**What it demonstrates:**
+- Systems architecture: separating concerns across two languages
+- Go concurrency: goroutines, worker pools, atomic counters
+- Python tooling: subprocess orchestration, real-time JSON parsing
+- Red team mindset: modular design built for extensibility
+
+---
+
 ## Limitations
 
 - Username/email enumeration accuracy depends on the target's HTTP response behaviour. There is no universal heuristic — tune per target.
