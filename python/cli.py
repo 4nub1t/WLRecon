@@ -1,6 +1,7 @@
 import os
 import sys
 import re
+from datetime import datetime
 from config import Config
 from parser import ResultParser
 from modules.email_enum import EmailEnumerator
@@ -117,6 +118,22 @@ class CLI:
         print("\033[0;37m    tls-skip: ignore TLS certificate verification (self-signed certs, OSCP labs, bug bounty staging)\033[0m")
         tls_skip = input("\033[0;37m    Skip TLS verification? [y/N]: \033[0m").strip().lower()
         self.config.set("tls_skip", tls_skip == "y")
+
+        print("\n\033[1;33m[*] Recursive Options (dir and endpoint only)\033[0m")
+        recursive = input("\033[0;37m    Enable recursive scan? [y/N]: \033[0m").strip().lower()
+        self.config.set("recursive", recursive == "y")
+        if recursive == "y":
+            depth = input("\033[0;37m    Max depth [3]       : \033[0m").strip() or "3"
+            self.config.set("max_depth", depth)
+
+        print("\n\033[1;33m[*] Output Options\033[0m")
+        fmt = input("\033[0;37m    Format [txt/json/csv/xml] (default: txt): \033[0m").strip().lower() or "txt"
+        if fmt not in ("txt", "json", "csv", "xml"):
+            fmt = "txt"
+        ts = datetime.now().strftime("wlrecon_%Y%m%d_%H%M%S")
+        filename = input(f"\033[0;37m    Output filename [{ts}]: \033[0m").strip() or ts
+        self.config.set("output_format", fmt)
+        self.config.set("output_file", filename)
 
     def _run_module(self, key: str):
         mode_names = {"1": "email", "2": "user", "3": "dir", "4": "endpoint"}
