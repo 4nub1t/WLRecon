@@ -87,6 +87,7 @@ func (e *Engine) Run() error {
 	e.baseline = baseline
 
 	start := time.Now()
+	go e.emitOutputs()
 	total, found := e.scanTarget(e.cfg.Target, words, 0)
 
 	e.output <- SummaryResult{
