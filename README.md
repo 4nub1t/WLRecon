@@ -190,31 +190,29 @@ extra-params: function=login
 
 ---
 
-### Example — TryHackMe verbose login lab
+#### Example — Email enumeration on a verbose login endpoint
 
-Target: `http://enum.thm/labs/verbose_login/functions.php`
+Target: http://192.168.1.100/portal/auth.php
 
 ```
 [*] Target Configuration
-    Target URL          : http://enum.thm/labs/verbose_login/functions.php
-    Wordlist path       : /usr/share/wordlists/usernames.txt
-    Threads [50]        : 50
+    Target URL          : http://192.168.1.100/portal/auth.php
+    Wordlist path       : /usr/share/seclists/Usernames/top-usernames-shortlist.txt
+    Threads [50]        : 30
     Proxy [skip]        :
-    Timeout secs [10]   : 10
+    Timeout secs [10]   : 5
 
 [*] Detection Options
     match-string  [skip]:
-    invalid-string[skip]: Email does not exist
+    invalid-string[skip]: Invalid email address
 
 [*] Advanced Options
-    Extra headers : X-Requested-With:XMLHttpRequest,Referer:http://enum.thm/labs/verbose_login/
-    Extra params  : function=login
-```
+    Extra headers : X-Requested-With:XMLHttpRequest,Referer:http://192.168.1.100/portal/
+    Extra params  : action=authenticate
 
 Output:
-```
-[+] VALID EMAIL: admin@enum.thm        200  [1842b]
-[+] VALID EMAIL: john@enum.thm         200  [1856b]
+[+] VALID EMAIL: alice@corp.local          200  [2104b]
+[+] VALID EMAIL: bob@corp.local            200  [2098b]
 
 -------------------------------------------------------
   SCAN RESULTS SUMMARY
@@ -222,22 +220,12 @@ Output:
 
   VALID EMAILS (2)
   -----------------------------------------------------
-  > admin@enum.thm                    200  [1842b]
-  > john@enum.thm                     200  [1856b]
+  > alice@corp.local                      200  [2104b]
+  > bob@corp.local                        200  [2098b]
 
 -------------------------------------------------------
-  Tested: 2211   Found: 2   Time: 8431ms
-
-## Output Format
-
-[+] FOUND: /admin (200)
-[+] FOUND: /uploads (403)
-[+] VALID USER: admin
-[+] VALID EMAIL: admin@target.local
-[-] NOT FOUND: /secret
-[~] Progress: 400/2000 (20.0%)
-[*] Scan complete — 3 found / 2000 tested in 4821ms
-
+  Tested: 1850   Found: 2   Time: 6213ms
+-------------------------------------------------------
 ```
 
 ---
