@@ -230,7 +230,6 @@ Output:
 
 ## Output Format
 
-```
 [+] FOUND: /admin (200)
 [+] FOUND: /uploads (403)
 [+] VALID USER: admin
@@ -238,6 +237,7 @@ Output:
 [-] NOT FOUND: /secret
 [~] Progress: 400/2000 (20.0%)
 [*] Scan complete — 3 found / 2000 tested in 4821ms
+
 ```
 
 ---
