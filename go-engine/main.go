@@ -17,11 +17,12 @@ func main() {
 	invalidString := flag.String("invalid-string", "", "Mark as NOT FOUND if response body contains this string")
 	extraHeaders  := flag.String("headers", "", "Extra headers in format 'Key1:Value1,Key2:Value2'")
 	extraParams   := flag.String("params", "", "Extra POST params in format 'key1=value1&key2=value2'")
+	tlsSkip       := flag.Bool("tls-skip", false, "Skip TLS certificate verification (self-signed certs, OSCP labs)")
 
 	flag.Parse()
 
 	if *mode == "" || *target == "" || *wordlist == "" {
-		fmt.Fprintln(os.Stderr, "usage: wlrecon-engine -mode <dir|endpoint|user|email> -target <url> -wordlist <path> [-threads N] [-timeout N] [-proxy url] [-match-string str] [-invalid-string str] [-headers 'K:V,...'] [-params 'k=v&...']")
+		fmt.Fprintln(os.Stderr, "usage: wlrecon-engine -mode <dir|endpoint|user|email> -target <url> -wordlist <path> [-threads N] [-timeout N] [-proxy url] [-match-string str] [-invalid-string str] [-headers 'K:V,...'] [-params 'k=v&...'] [-tls-skip]")
 		os.Exit(1)
 	}
 
@@ -36,6 +37,7 @@ func main() {
 		InvalidString: *invalidString,
 		ExtraHeaders:  *extraHeaders,
 		ExtraParams:   *extraParams,
+		TLSSkip:       *tlsSkip,
 	}
 
 	engine := NewEngine(cfg)
