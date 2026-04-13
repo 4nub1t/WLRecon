@@ -1,0 +1,26 @@
+# Go binaries
+go-engine/wlrecon-engine
+go-engine/wlrecon-engine.exe
+
+# Output files
+output/*.txt
+output/*.json
+output/*.csv
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo

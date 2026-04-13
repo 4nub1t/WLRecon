@@ -1,0 +1,4 @@
+# WLRecon Python dependencies
+# Python >= 3.11 recommended
+
+requests>=2.31.0
