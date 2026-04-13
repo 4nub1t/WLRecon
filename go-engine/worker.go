@@ -6,13 +6,14 @@ import (
 	"strings"
 )
 
-func (e *Engine) probeDirAt(target, word string) Result {
+
+func (e *Engine) probeDirAtWithBaseline(target, word string, baseline BaselineResponse) Result {
 	fullURL := joinURL(target, word)
 	status, length, body, err := e.client.GetWithBody(fullURL)
 	if err != nil {
 		return Result{Type: "dir", Result: "/" + word, Found: false}
 	}
-	found := e.isHit(status, length, body)
+	found := e.isHitWithBaseline(status, length, body, baseline)
 	return Result{
 		Type:   "dir",
 		Result: "/" + word,
@@ -22,7 +23,8 @@ func (e *Engine) probeDirAt(target, word string) Result {
 	}
 }
 
-func (e *Engine) probeEndpointAt(target, word string) Result {
+
+func (e *Engine) probeEndpointAtWithBaseline(target, word string, baseline BaselineResponse) Result {
 	candidate := word
 	if !strings.HasPrefix(word, "/") {
 		candidate = "/api/" + word
@@ -32,7 +34,7 @@ func (e *Engine) probeEndpointAt(target, word string) Result {
 	if err != nil {
 		return Result{Type: "endpoint", Result: candidate, Found: false}
 	}
-	found := e.isHit(status, length, body)
+	found := e.isHitWithBaseline(status, length, body, baseline)
 	return Result{
 		Type:   "endpoint",
 		Result: candidate,
@@ -42,14 +44,6 @@ func (e *Engine) probeEndpointAt(target, word string) Result {
 	}
 }
 
-// Keep old methods as wrappers for compatibility
-func (e *Engine) probeDir(word string) Result {
-	return e.probeDirAt(e.cfg.Target, word)
-}
-
-func (e *Engine) probeEndpoint(word string) Result {
-	return e.probeEndpointAt(e.cfg.Target, word)
-}
 
 func (e *Engine) probeUser(word string) Result {
 	body := fmt.Sprintf("username=%s&password=invalid_probe_wlrecon", url.QueryEscape(word))
@@ -94,6 +88,7 @@ func (e *Engine) probeEmail(word string) Result {
 		Found:  found,
 	}
 }
+
 
 func extractDomain(rawURL string) string {
 	u, err := url.Parse(rawURL)
