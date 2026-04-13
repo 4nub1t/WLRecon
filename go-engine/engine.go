@@ -23,6 +23,8 @@ type EngineConfig struct {
 	ExtraHeaders  string
 	ExtraParams   string
 	TLSSkip       bool
+	Recursive     bool
+	MaxDepth      int
 }
 
 type Result struct {
@@ -31,6 +33,7 @@ type Result struct {
 	Status int    `json:"status,omitempty"`
 	Length int64  `json:"length,omitempty"`
 	Found  bool   `json:"found"`
+	Depth  int    `json:"depth,omitempty"`
 	Error  string `json:"error,omitempty"`
 }
 
@@ -58,14 +61,16 @@ type Engine struct {
 	client   *HTTPClient
 	output   chan interface{}
 	baseline BaselineResponse
+	visited  map[string]bool
 	mu       sync.Mutex
 }
 
 func NewEngine(cfg EngineConfig) *Engine {
 	return &Engine{
-		cfg:    cfg,
-		client: NewHTTPClient(cfg.Timeout, cfg.Proxy, cfg.ExtraHeaders, cfg.TLSSkip),
-		output: make(chan interface{}, 512),
+		cfg:     cfg,
+		client:  NewHTTPClient(cfg.Timeout, cfg.Proxy, cfg.ExtraHeaders, cfg.TLSSkip),
+		output:  make(chan interface{}, 512),
+		visited: make(map[string]bool),
 	}
 }
 
@@ -75,31 +80,61 @@ func (e *Engine) Run() error {
 		return fmt.Errorf("loading wordlist: %w", err)
 	}
 
-	baseline, err := e.calibrate()
+	baseline, err := e.calibrate(e.cfg.Target)
 	if err != nil {
 		baseline = BaselineResponse{Status: 404, Length: -1, Body: ""}
 	}
 	e.baseline = baseline
 
+	start := time.Now()
+	total, found := e.scanTarget(e.cfg.Target, words, 0)
+
+	e.output <- SummaryResult{
+		Type:       "summary",
+		Total:      total,
+		FoundCount: found,
+		ElapsedMs:  time.Since(start).Milliseconds(),
+	}
+
+	close(e.output)
+	return nil
+}
+
+func (e *Engine) scanTarget(target string, words []string, depth int) (int, int64) {
+	e.mu.Lock()
+	if e.visited[target] {
+		e.mu.Unlock()
+		return 0, 0
+	}
+	e.visited[target] = true
+	e.mu.Unlock()
+
 	total := len(words)
 	var counter atomic.Int64
 	var found atomic.Int64
-	start := time.Now()
 
 	jobs := make(chan string, e.cfg.Threads*2)
 	var wg sync.WaitGroup
-
-	go e.emitOutputs()
+	var recurseTargets []string
+	var recurseMu sync.Mutex
 
 	for i := 0; i < e.cfg.Threads; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			for word := range jobs {
-				result := e.process(word)
+				result := e.processAt(target, word, depth)
 				counter.Add(1)
 				if result.Found {
 					found.Add(1)
+					if e.cfg.Recursive && depth < e.cfg.MaxDepth {
+						if isRecursable(result.Status) {
+							newTarget := strings.TrimRight(target, "/") + result.Result
+							recurseMu.Lock()
+							recurseTargets = append(recurseTargets, newTarget)
+							recurseMu.Unlock()
+						}
+					}
 				}
 				e.output <- result
 
@@ -121,19 +156,25 @@ func (e *Engine) Run() error {
 	close(jobs)
 	wg.Wait()
 
-	e.output <- SummaryResult{
-		Type:       "summary",
-		Total:      total,
-		FoundCount: found.Load(),
-		ElapsedMs:  time.Since(start).Milliseconds(),
+	for _, subTarget := range recurseTargets {
+		subTotal, subFound := e.scanTarget(subTarget, words, depth+1)
+		total += subTotal
+		found.Add(subFound)
 	}
 
-	close(e.output)
-	return nil
+	return total, found.Load()
 }
 
-func (e *Engine) calibrate() (BaselineResponse, error) {
-	probe := joinURL(e.cfg.Target, "wlrecon_probe_xzqq_invalid_9f3k")
+func isRecursable(status int) bool {
+	switch status {
+	case 200, 301, 302, 307, 403:
+		return true
+	}
+	return false
+}
+
+func (e *Engine) calibrate(target string) (BaselineResponse, error) {
+	probe := joinURL(target, "wlrecon_probe_xzqq_invalid_9f3k")
 	status, length, body, err := e.client.GetWithBody(probe)
 	if err != nil {
 		return BaselineResponse{}, err
@@ -168,24 +209,31 @@ func (e *Engine) differsFromBaseline(status int, length int64) bool {
 	return false
 }
 
-func (e *Engine) process(word string) Result {
+func (e *Engine) processAt(target, word string, depth int) Result {
 	word = strings.TrimSpace(word)
 	if word == "" || strings.HasPrefix(word, "#") {
 		return Result{Type: e.cfg.Mode, Result: word, Found: false}
 	}
 
+	var r Result
 	switch e.cfg.Mode {
 	case "dir":
-		return e.probeDir(word)
+		r = e.probeDirAt(target, word)
 	case "endpoint":
-		return e.probeEndpoint(word)
+		r = e.probeEndpointAt(target, word)
 	case "user":
-		return e.probeUser(word)
+		r = e.probeUser(word)
 	case "email":
-		return e.probeEmail(word)
+		r = e.probeEmail(word)
 	default:
-		return Result{Type: e.cfg.Mode, Error: "unknown mode: " + e.cfg.Mode}
+		r = Result{Type: e.cfg.Mode, Error: "unknown mode: " + e.cfg.Mode}
 	}
+	r.Depth = depth
+	return r
+}
+
+func (e *Engine) process(word string) Result {
+	return e.processAt(e.cfg.Target, word, 0)
 }
 
 func (e *Engine) emitOutputs() {
