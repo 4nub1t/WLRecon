@@ -190,9 +190,9 @@ extra-params: function=login
 
 ---
 
-#### Example — Email enumeration on a verbose login endpoint
+## Example — Email enumeration on a verbose login endpoint
 
-Target: http://192.168.1.100/portal/auth.php
+### Target: http://192.168.1.100/portal/auth.php
 
 ```
 [*] Target Configuration
