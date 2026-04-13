@@ -1,4 +1,6 @@
+import os
 import subprocess
+from datetime import datetime
 
 class DirEnumerator:
     def __init__(self, config, parser):
@@ -10,7 +12,29 @@ class DirEnumerator:
         if not ok:
             print(f"\033[1;31m[!] {err}\033[0m")
             return
+
+        self._setup_output()
         self._invoke(self._build_cmd())
+
+    def _setup_output(self):
+        output_dir  = self.config.get("output_dir")
+        output_file = self.config.get("output_file", "").strip()
+        fmt         = self.config.get("output_format", "txt").strip().lower()
+        mode_map    = {"DirEnumerator": "dir", "EndpointEnumerator": "endpoint",
+                       "UserEnumerator": "user", "EmailEnumerator": "email"}
+        mode        = mode_map.get(self.__class__.__name__, "dir")
+
+        os.makedirs(output_dir, exist_ok=True)
+
+        if not output_file:
+            output_file = datetime.now().strftime("wlrecon_%Y%m%d_%H%M%S")
+
+        filepath = os.path.join(output_dir, f"{output_file}.{fmt}")
+        self.parser.configure_output(filepath, fmt, {
+            "target":   self.config.get("target"),
+            "wordlist": self.config.get("wordlist"),
+            "mode":     mode,
+        })
 
     def _build_cmd(self) -> list[str]:
         mode_map = {
@@ -40,6 +64,8 @@ class DirEnumerator:
             cmd += ["-params", self.config.get("extra_params")]
         if self.config.get("tls_skip"):
             cmd += ["-tls-skip"]
+        if self.config.get("recursive") and mode in ("dir", "endpoint"):
+            cmd += ["-recursive", "-depth", self.config.get("max_depth", "3")]
         return cmd
 
     def _invoke(self, cmd: list[str]):
