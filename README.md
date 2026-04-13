@@ -106,6 +106,10 @@ cd ..
 ```bash
 python python/main.py
 ```
+> **Note:** Activate the virtual environment before running:
+> ```bash
+> source venv/bin/activate
+> ```
 
 The interactive menu will appear:
 
