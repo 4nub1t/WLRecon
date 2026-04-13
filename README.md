@@ -482,7 +482,5 @@ eJPTv2 certified | OSCP preparation | CTF competitor
 **Use responsibly.**
 
 ---
-
-
 -------------------------------------------------------
-```
+
