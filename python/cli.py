@@ -1,5 +1,6 @@
 import os
 import sys
+import re
 from config import Config
 from parser import ResultParser
 from modules.email_enum import EmailEnumerator
@@ -30,6 +31,27 @@ MENU = """
   +---------------------------------------+
 \033[0m"""
 
+
+def _normalize_headers(raw: str) -> str:
+    """Acepta 'Key:Value,Key2:Value2' o formato dict Python "'Key': 'Value', ..." """
+    if not raw:
+        return ""
+    if "': '" in raw or '": "' in raw:
+        pairs = re.findall(r"""['"]([^'"]+)['"]\s*:\s*['"]([^'"]+)['"]""", raw)
+        return ",".join(f"{k}:{v}" for k, v in pairs)
+    return raw
+
+
+def _normalize_params(raw: str) -> str:
+    """Acepta 'key=value,key2=value2' o formato dict Python "'key': 'value', ..." """
+    if not raw:
+        return ""
+    if "': '" in raw or '": "' in raw:
+        pairs = re.findall(r"""['"]([^'"]+)['"]\s*:\s*['"]([^'"]+)['"]""", raw)
+        return ",".join(f"{k}={v}" for k, v in pairs)
+    return raw
+
+
 class CLI:
     def __init__(self, config: Config):
         self.config = config
@@ -58,7 +80,6 @@ class CLI:
         self.config.set("proxy", proxy)
         self.config.set("timeout", timeout)
 
-        # Advanced detection options — shown for all modules
         print("\n\033[1;33m[*] Detection Options (leave blank to use baseline auto-detection)\033[0m")
         print("\033[0;37m    match-string  : mark as FOUND if response body contains this string\033[0m")
         print("\033[0;37m    invalid-string: mark as NOT FOUND if response body contains this string\033[0m")
@@ -67,12 +88,11 @@ class CLI:
         self.config.set("match_string", match)
         self.config.set("invalid_string", invalid)
 
-        # Extra headers and params for advanced targets
         print("\n\033[1;33m[*] Advanced Options (leave blank to skip)\033[0m")
         headers = input("\033[0;37m    Extra headers  e.g. X-Requested-With:XMLHttpRequest,Referer:http://host/ : \033[0m").strip()
         params  = input("\033[0;37m    Extra POST params e.g. function=login : \033[0m").strip()
-        self.config.set("extra_headers", headers)
-        self.config.set("extra_params", params)
+        self.config.set("extra_headers", _normalize_headers(headers))
+        self.config.set("extra_params",  _normalize_params(params))
 
     def _run_module(self, key: str):
         mode_names = {"1": "email", "2": "user", "3": "dir", "4": "endpoint"}
