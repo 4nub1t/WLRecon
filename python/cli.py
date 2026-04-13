@@ -113,6 +113,11 @@ class CLI:
         self.config.set("extra_headers", _normalize_headers(headers))
         self.config.set("extra_params",  _normalize_params(params))
 
+        print("\n\033[1;33m[*] HTTPS Options\033[0m")
+        print("\033[0;37m    tls-skip: ignore TLS certificate verification (self-signed certs, OSCP labs, bug bounty staging)\033[0m")
+        tls_skip = input("\033[0;37m    Skip TLS verification? [y/N]: \033[0m").strip().lower()
+        self.config.set("tls_skip", tls_skip == "y")
+
     def _run_module(self, key: str):
         mode_names = {"1": "email", "2": "user", "3": "dir", "4": "endpoint"}
         self._prompt_config(mode_names.get(key, ""))
