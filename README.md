@@ -138,11 +138,35 @@ The interactive menu will appear:
 ```
 
 Then provide:
-- **Target URL** — full URL (e.g. `http://10.10.10.10` or `http://10.10.10.10/login`)
-- **Wordlist path** — absolute or relative path to your wordlist
-- **Threads** — concurrency (default: 50)
-- **Proxy** — optional Burp Suite or custom proxy
-- **Timeout** — HTTP timeout in seconds (default: 10)
+- **Target URL**
+  Full target endpoint (e.g. `http://10.10.10.10` or `http://10.10.10.10/login`)
+
+- **Wordlist**
+  Path to wordlist file (local or absolute path supported)
+
+- **Threads**
+  Number of concurrent workers (default: `50`)
+
+- **Proxy (optional)**
+  HTTP proxy for traffic routing (e.g. Burp Suite `http://127.0.0.1:8080`)
+
+- **Timeout**
+  Request timeout in seconds (default: `10`)
+
+- **TLS Verification**
+  Skip TLS certificate verification for HTTPS targets (default: `false`)
+
+- **Recursive Scan**
+  Enable recursive enumeration of discovered directories/endpoints (default: `false`)
+
+- **Max Depth**
+  Maximum recursion depth (only applies if Recursive Scan is enabled) (default: `3`)
+
+- **Output Format**
+  Output format for results (`txt`, `json`, `csv`, `xml`) (default: `txt`)
+
+- **Output Filename**
+  Custom filename for saved results (default: `wlrecon_<timestamp>`)
 
 ---
 
