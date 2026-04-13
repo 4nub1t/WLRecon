@@ -57,12 +57,11 @@ type BaselineResponse struct {
 }
 
 type Engine struct {
-	cfg      EngineConfig
-	client   *HTTPClient
-	output   chan interface{}
-	baseline BaselineResponse
-	visited  map[string]bool
-	mu       sync.Mutex
+	cfg     EngineConfig
+	client  *HTTPClient
+	output  chan interface{}
+	visited map[string]bool
+	mu      sync.Mutex
 }
 
 func NewEngine(cfg EngineConfig) *Engine {
@@ -84,11 +83,11 @@ func (e *Engine) Run() error {
 	if err != nil {
 		baseline = BaselineResponse{Status: 404, Length: -1, Body: ""}
 	}
-	e.baseline = baseline
 
 	start := time.Now()
 	go e.emitOutputs()
-	total, found := e.scanTarget(e.cfg.Target, words, 0)
+
+	total, found := e.scanTarget(e.cfg.Target, words, 0, baseline)
 
 	e.output <- SummaryResult{
 		Type:       "summary",
@@ -101,7 +100,7 @@ func (e *Engine) Run() error {
 	return nil
 }
 
-func (e *Engine) scanTarget(target string, words []string, depth int) (int, int64) {
+func (e *Engine) scanTarget(target string, words []string, depth int, baseline BaselineResponse) (int, int64) {
 	e.mu.Lock()
 	if e.visited[target] {
 		e.mu.Unlock()
@@ -111,13 +110,10 @@ func (e *Engine) scanTarget(target string, words []string, depth int) (int, int6
 	e.mu.Unlock()
 
 	if depth > 0 {
-        baseline, err := e.calibrate(target)
-        if err == nil {
-            e.mu.Lock()
-            e.baseline = baseline
-            e.mu.Unlock()
-        }
-    }
+		if b, err := e.calibrate(target); err == nil {
+			baseline = b
+		}
+	}
 
 	total := len(words)
 	var counter atomic.Int64
@@ -133,7 +129,7 @@ func (e *Engine) scanTarget(target string, words []string, depth int) (int, int6
 		go func() {
 			defer wg.Done()
 			for word := range jobs {
-				result := e.processAt(target, word, depth)
+				result := e.processAtWithBaseline(target, word, depth, baseline)
 				counter.Add(1)
 				if result.Found {
 					found.Add(1)
@@ -141,7 +137,9 @@ func (e *Engine) scanTarget(target string, words []string, depth int) (int, int6
 						if isRecursable(result.Status) {
 							newTarget := strings.TrimRight(target, "/") + result.Result
 							recurseMu.Lock()
-							recurseTargets = append(recurseTargets, newTarget)
+							if len(recurseTargets) < 50 {
+								recurseTargets = append(recurseTargets, newTarget)
+							}
 							recurseMu.Unlock()
 						}
 					}
@@ -167,7 +165,7 @@ func (e *Engine) scanTarget(target string, words []string, depth int) (int, int6
 	wg.Wait()
 
 	for _, subTarget := range recurseTargets {
-		subTotal, subFound := e.scanTarget(subTarget, words, depth+1)
+		subTotal, subFound := e.scanTarget(subTarget, words, depth+1, baseline)
 		total += subTotal
 		found.Add(subFound)
 	}
@@ -177,7 +175,7 @@ func (e *Engine) scanTarget(target string, words []string, depth int) (int, int6
 
 func isRecursable(status int) bool {
 	switch status {
-	case 200, 301, 302, 307, 403:
+	case 200, 301, 302, 307:
 		return true
 	}
 	return false
@@ -192,7 +190,7 @@ func (e *Engine) calibrate(target string) (BaselineResponse, error) {
 	return BaselineResponse{Status: status, Length: length, Body: body}, nil
 }
 
-func (e *Engine) isHit(status int, length int64, body string) bool {
+func (e *Engine) isHitWithBaseline(status int, length int64, body string, baseline BaselineResponse) bool {
 	ms := e.cfg.MatchString
 	is := e.cfg.InvalidString
 
@@ -202,15 +200,12 @@ func (e *Engine) isHit(status int, length int64, body string) bool {
 	if is != "" {
 		return !strings.Contains(body, is)
 	}
-	return e.differsFromBaseline(status, length)
-}
 
-func (e *Engine) differsFromBaseline(status int, length int64) bool {
-	if status != e.baseline.Status {
+	if status != baseline.Status {
 		return true
 	}
-	if e.baseline.Length >= 0 {
-		diff := length - e.baseline.Length
+	if baseline.Length >= 0 {
+		diff := length - baseline.Length
 		if diff < 0 {
 			diff = -diff
 		}
@@ -219,7 +214,7 @@ func (e *Engine) differsFromBaseline(status int, length int64) bool {
 	return false
 }
 
-func (e *Engine) processAt(target, word string, depth int) Result {
+func (e *Engine) processAtWithBaseline(target, word string, depth int, baseline BaselineResponse) Result {
 	word = strings.TrimSpace(word)
 	if word == "" || strings.HasPrefix(word, "#") {
 		return Result{Type: e.cfg.Mode, Result: word, Found: false}
@@ -228,9 +223,9 @@ func (e *Engine) processAt(target, word string, depth int) Result {
 	var r Result
 	switch e.cfg.Mode {
 	case "dir":
-		r = e.probeDirAt(target, word)
+		r = e.probeDirAtWithBaseline(target, word, baseline)
 	case "endpoint":
-		r = e.probeEndpointAt(target, word)
+		r = e.probeEndpointAtWithBaseline(target, word, baseline)
 	case "user":
 		r = e.probeUser(word)
 	case "email":
@@ -240,10 +235,6 @@ func (e *Engine) processAt(target, word string, depth int) Result {
 	}
 	r.Depth = depth
 	return r
-}
-
-func (e *Engine) process(word string) Result {
-	return e.processAt(e.cfg.Target, word, 0)
 }
 
 func (e *Engine) emitOutputs() {
