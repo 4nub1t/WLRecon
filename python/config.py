@@ -13,6 +13,10 @@ class Config:
             "extra_headers": "",
             "extra_params": "",
             "tls_skip": False,
+            "recursive": False,
+            "max_depth": "3",
+            "output_file": "",
+            "output_format": "txt",
             "engine_path": os.path.join(
                 os.path.dirname(os.path.dirname(__file__)),
                 "go-engine",
@@ -24,7 +28,7 @@ class Config:
             ),
         }
 
-    def set(self, key: str, value: str):
+    def set(self, key: str, value):
         self._data[key] = value
 
     def get(self, key: str, fallback=None):
