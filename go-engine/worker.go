@@ -6,7 +6,6 @@ import (
 	"strings"
 )
 
-// --- dir ---
 
 func (e *Engine) probeDirAtWithBaseline(target, word string, baseline BaselineResponse) Result {
 	fullURL := joinURL(target, word)
@@ -29,7 +28,6 @@ func (e *Engine) probeDirAtWithBaseline(target, word string, baseline BaselineRe
 	}
 }
 
-// --- endpoint ---
 
 func (e *Engine) probeEndpointAtWithBaseline(target, word string, baseline BaselineResponse) Result {
 	candidate := word
@@ -41,7 +39,6 @@ func (e *Engine) probeEndpointAtWithBaseline(target, word string, baseline Basel
 	if err != nil {
 		return Result{Type: "endpoint", Result: candidate, Found: false}
 	}
-	// Ruta completa desde el root original
 	path := strings.TrimPrefix(fullURL, strings.TrimRight(e.cfg.Target, "/"))
 	if path == "" || path[0] != '/' {
 		path = "/" + path
@@ -56,7 +53,6 @@ func (e *Engine) probeEndpointAtWithBaseline(target, word string, baseline Basel
 	}
 }
 
-// --- user ---
 
 func (e *Engine) probeUser(word string) Result {
 	body := fmt.Sprintf("username=%s&password=invalid_probe_wlrecon", url.QueryEscape(word))
@@ -77,7 +73,7 @@ func (e *Engine) probeUser(word string) Result {
 	}
 }
 
-// --- email ---
+
 
 func (e *Engine) probeEmail(word string) Result {
 	var email string
@@ -104,7 +100,6 @@ func (e *Engine) probeEmail(word string) Result {
 	}
 }
 
-// --- helpers ---
 
 func extractDomain(rawURL string) string {
 	u, err := url.Parse(rawURL)
