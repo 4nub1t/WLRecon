@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"fmt"
 	"io"
 	"net/http"
@@ -14,12 +15,13 @@ type HTTPClient struct {
 	extraHeaders map[string]string
 }
 
-func NewHTTPClient(timeoutSec int, proxy string, extraHeaders string) *HTTPClient {
+func NewHTTPClient(timeoutSec int, proxy string, extraHeaders string, tlsSkip bool) *HTTPClient {
 	transport := &http.Transport{
 		MaxIdleConns:        200,
 		MaxIdleConnsPerHost: 50,
 		IdleConnTimeout:     30 * time.Second,
 		DisableKeepAlives:   false,
+		TLSClientConfig:     &tls.Config{InsecureSkipVerify: tlsSkip},
 	}
 
 	if proxy != "" {
