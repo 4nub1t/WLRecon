@@ -6,11 +6,11 @@ import (
 	"strings"
 )
 
-func (e *Engine) probeDir(word string) Result {
-	target := joinURL(e.cfg.Target, word)
-	status, length, body, err := e.client.GetWithBody(target)
+func (e *Engine) probeDirAt(target, word string) Result {
+	fullURL := joinURL(target, word)
+	status, length, body, err := e.client.GetWithBody(fullURL)
 	if err != nil {
-		return Result{Type: "dir", Result: word, Found: false}
+		return Result{Type: "dir", Result: "/" + word, Found: false}
 	}
 	found := e.isHit(status, length, body)
 	return Result{
@@ -22,13 +22,13 @@ func (e *Engine) probeDir(word string) Result {
 	}
 }
 
-func (e *Engine) probeEndpoint(word string) Result {
+func (e *Engine) probeEndpointAt(target, word string) Result {
 	candidate := word
 	if !strings.HasPrefix(word, "/") {
 		candidate = "/api/" + word
 	}
-	target := strings.TrimRight(e.cfg.Target, "/") + candidate
-	status, length, body, err := e.client.GetWithBody(target)
+	fullURL := strings.TrimRight(target, "/") + candidate
+	status, length, body, err := e.client.GetWithBody(fullURL)
 	if err != nil {
 		return Result{Type: "endpoint", Result: candidate, Found: false}
 	}
@@ -40,6 +40,15 @@ func (e *Engine) probeEndpoint(word string) Result {
 		Length: length,
 		Found:  found,
 	}
+}
+
+// Keep old methods as wrappers for compatibility
+func (e *Engine) probeDir(word string) Result {
+	return e.probeDirAt(e.cfg.Target, word)
+}
+
+func (e *Engine) probeEndpoint(word string) Result {
+	return e.probeEndpointAt(e.cfg.Target, word)
 }
 
 func (e *Engine) probeUser(word string) Result {
