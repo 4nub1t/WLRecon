@@ -151,10 +151,6 @@ class ResultParser:
         print(f"  {GRAY}Tested:{RESET} {total}   {GRAY}Found:{RESET} {GREEN}{found_count}{RESET}   {GRAY}Time:{RESET} {elapsed}ms")
         print(f"{CYAN}{'─' * 55}{RESET}\n")
 
-        print(f"DEBUG _output_file='{self._output_file}' hits={len(self._hits)}")
-        if self._output_file:
-            self._save_output(total, found_count, elapsed)
-
         if self._output_file:
             self._save_output(total, found_count, elapsed)
 
