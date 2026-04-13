@@ -27,11 +27,11 @@ def _strip_ansi(s: str) -> int:
     return len(_ANSI_RE.sub('', s))
 
 def _build_menu() -> str:
-    INNER_W = 41  # ancho interior visible entre | y |
+    INNER_W = 41  
 
     def row(content: str) -> str:
         visible_len = _strip_ansi(content)
-        padding = INNER_W - visible_len - 1  # -1 por el espacio antes del |
+        padding = INNER_W - visible_len - 1 
         return f"  \033[1;37m|\033[0m {content}{' ' * padding}\033[1;37m|"
 
     border = "  \033[1;37m+" + "-" * INNER_W + "+\033[0m"
