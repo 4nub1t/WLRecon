@@ -38,6 +38,8 @@ class EmailEnumerator:
             cmd += ["-headers", self.config.get("extra_headers")]
         if self.config.get("extra_params"):
             cmd += ["-params", self.config.get("extra_params")]
+        if self.config.get("tls_skip"):
+            cmd += ["-tls-skip"]
         return cmd
 
     def _invoke(self, cmd: list[str]):
