@@ -22,13 +22,14 @@ MENU = """
 \033[1;37m  ┌─────────────────────────────────────┐
   │           SELECT MODULE             │
   ├─────────────────────────────────────┤
-  │  \033[1;32m[1]\033[1;37m  Email Enumeration                 │
-  │  \033[1;32m[2]\033[1;37m  Username Enumeration              │
-  │  \033[1;32m[3]\033[1;37m  Directory Bruteforce              │
-  │  \033[1;32m[4]\033[1;37m  Endpoint Discovery                │
-  │  \033[1;31m[0]\033[1;37m  Exit                              │
+  │  \033[1;32m[1]\033[1;37m  Email Enumeration               │
+  │  \033[1;32m[2]\033[1;37m  Username Enumeration            │
+  │  \033[1;32m[3]\033[1;37m  Directory Bruteforce            │
+  │  \033[1;32m[4]\033[1;37m  Endpoint Discovery              │
+  │  \033[1;31m[0]\033[1;37m  Exit                            │
   └─────────────────────────────────────┘\033[0m
 """
+
 
 
 class CLI:
