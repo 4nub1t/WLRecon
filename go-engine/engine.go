@@ -110,6 +110,15 @@ func (e *Engine) scanTarget(target string, words []string, depth int) (int, int6
 	e.visited[target] = true
 	e.mu.Unlock()
 
+	if depth > 0 {
+        baseline, err := e.calibrate(target)
+        if err == nil {
+            e.mu.Lock()
+            e.baseline = baseline
+            e.mu.Unlock()
+        }
+    }
+
 	total := len(words)
 	var counter atomic.Int64
 	var found atomic.Int64
