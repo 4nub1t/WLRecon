@@ -33,6 +33,7 @@ class ResultParser:
         self._meta: dict = {}
 
     def configure_output(self, filepath: str, fmt: str, meta: dict):
+        self._hits = []
         self._output_file = filepath
         self._output_format = fmt.lower()
         self._meta = meta
@@ -154,6 +155,9 @@ class ResultParser:
             self._save_output(total, found_count, elapsed)
 
     def _save_output(self, total: int, found_count: int, elapsed: int):
+        if not self._output_file:                                           
+            print(f"{RED}[!] Output path not configured — file not saved.{RESET}") 
+            return  
         fmt = self._output_format
         try:
             if fmt == "txt":
@@ -188,10 +192,13 @@ class ResultParser:
                 f.write(f"{labels.get(rtype, rtype.upper())} ({len(hits)})\n")
                 f.write("-" * 45 + "\n")
                 for hit in hits:
-                    depth_str = f"  depth:{hit.get('depth',0)}" if hit.get('depth', 0) > 0 else ""
-                    f.write(f"  {hit['result']:<35} {hit.get('status',0)}  [{hit.get('length',0)}b]{depth_str}\n")
+                    result    = str(hit.get("result", ""))
+                    status    = hit.get("status", 0)
+                    length    = hit.get("length", 0)
+                    depth     = hit.get("depth", 0)
+                    depth_str = f"  depth:{depth}" if depth > 0 else ""
+                    f.write(f"  {result:<35} {status}  [{length}b]{depth_str}\n")
                 f.write("\n")
-
             f.write("-" * 55 + "\n")
             f.write(f"  Tested: {total}   Found: {found_count}   Time: {elapsed}ms\n")
             f.write("-" * 55 + "\n")
@@ -219,7 +226,7 @@ class ResultParser:
             for hit in self._hits:
                 writer.writerow({
                     "type":   hit.get("type", ""),
-                    "result": hit.get("result", ""),
+                    "result": str(hit.get("result", "")), 
                     "status": hit.get("status", 0),
                     "length": hit.get("length", 0),
                     "depth":  hit.get("depth", 0),
@@ -241,7 +248,7 @@ class ResultParser:
         for hit in self._hits:
             item = ET.SubElement(results, "item")
             ET.SubElement(item, "type").text   = hit.get("type", "")
-            ET.SubElement(item, "result").text = hit.get("result", "")
+            ET.SubElement(item, "result").text = str(hit.get("result", ""))
             ET.SubElement(item, "status").text = str(hit.get("status", 0))
             ET.SubElement(item, "length").text = str(hit.get("length", 0))
             ET.SubElement(item, "depth").text  = str(hit.get("depth", 0))
