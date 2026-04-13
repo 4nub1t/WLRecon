@@ -25,7 +25,7 @@ type EngineConfig struct {
 	TLSSkip            bool
 	Recursive          bool
 	MaxDepth           int
-	MaxRecursePerLevel int // 0 = unlimited
+	MaxRecursePerLevel int
 }
 
 type Result struct {
@@ -61,9 +61,10 @@ type Engine struct {
 	cfg          EngineConfig
 	client       *HTTPClient
 	output       chan interface{}
-	initBaseline BaselineResponse // set once in Run(), never modified — safe for user/email modes
+	initBaseline BaselineResponse
 	visited      map[string]bool
 	mu           sync.Mutex
+	wg           sync.WaitGroup
 }
 
 func NewEngine(cfg EngineConfig) *Engine {
@@ -83,12 +84,13 @@ func (e *Engine) Run() error {
 
 	baseline, err := e.calibrate(e.cfg.Target)
 	if err != nil {
-		baseline = BaselineResponse{Status: 404, Length: -1, Body: ""}
+		baseline = BaselineResponse{Status: 404, Length: -1}
 	}
-	// Store as read-only initial baseline for user/email modes
 	e.initBaseline = baseline
 
 	start := time.Now()
+
+	e.wg.Add(1)
 	go e.emitOutputs()
 
 	total, found := e.scanTarget(e.cfg.Target, words, 0, baseline)
@@ -101,7 +103,21 @@ func (e *Engine) Run() error {
 	}
 
 	close(e.output)
+
+	e.wg.Wait()
+
 	return nil
+}
+
+func (e *Engine) emitOutputs() {
+	defer e.wg.Done()
+
+	enc := json.NewEncoder(os.Stdout)
+
+	for item := range e.output {
+		_ = enc.Encode(item)
+		_ = os.Stdout.Sync()
+	}
 }
 
 func (e *Engine) scanTarget(target string, words []string, depth int, baseline BaselineResponse) (int, int64) {
@@ -113,7 +129,6 @@ func (e *Engine) scanTarget(target string, words []string, depth int, baseline B
 	e.visited[target] = true
 	e.mu.Unlock()
 
-	// Each recursive level gets its own baseline — no shared state, no race conditions
 	if depth > 0 {
 		if b, err := e.calibrate(target); err == nil {
 			baseline = b
@@ -133,14 +148,19 @@ func (e *Engine) scanTarget(target string, words []string, depth int, baseline B
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
+
 			for word := range jobs {
 				result := e.processAtWithBaseline(target, word, depth, baseline)
+
 				counter.Add(1)
+
 				if result.Found {
 					found.Add(1)
+
 					if e.cfg.Recursive && depth < e.cfg.MaxDepth {
 						if isRecursable(result.Status) {
 							newTarget := strings.TrimRight(target, "/") + result.Result
+
 							recurseMu.Lock()
 							limit := e.cfg.MaxRecursePerLevel
 							if limit == 0 || len(recurseTargets) < limit {
@@ -150,6 +170,7 @@ func (e *Engine) scanTarget(target string, words []string, depth int, baseline B
 						}
 					}
 				}
+
 				e.output <- result
 
 				cur := counter.Load()
@@ -179,7 +200,6 @@ func (e *Engine) scanTarget(target string, words []string, depth int, baseline B
 	return total, found.Load()
 }
 
-// isRecursable — 403 excluded intentionally to avoid recursing into .htaccess/.htpasswd etc.
 func isRecursable(status int) bool {
 	switch status {
 	case 200, 301, 302, 307:
@@ -197,12 +217,10 @@ func (e *Engine) calibrate(target string) (BaselineResponse, error) {
 	return BaselineResponse{Status: status, Length: length, Body: body}, nil
 }
 
-// isHit uses the initial baseline — safe for user/email modes (no recursion, no shared writes)
 func (e *Engine) isHit(status int, length int64, body string) bool {
 	return e.isHitWithBaseline(status, length, body, e.initBaseline)
 }
 
-// isHitWithBaseline uses a locally-scoped baseline — safe for concurrent dir/endpoint scanning
 func (e *Engine) isHitWithBaseline(status int, length int64, body string, baseline BaselineResponse) bool {
 	ms := e.cfg.MatchString
 	is := e.cfg.InvalidString
@@ -217,6 +235,7 @@ func (e *Engine) isHitWithBaseline(status int, length int64, body string, baseli
 	if status != baseline.Status {
 		return true
 	}
+
 	if baseline.Length >= 0 {
 		diff := length - baseline.Length
 		if diff < 0 {
@@ -224,6 +243,7 @@ func (e *Engine) isHitWithBaseline(status int, length int64, body string, baseli
 		}
 		return diff > 50
 	}
+
 	return false
 }
 
@@ -234,6 +254,7 @@ func (e *Engine) processAtWithBaseline(target, word string, depth int, baseline 
 	}
 
 	var r Result
+
 	switch e.cfg.Mode {
 	case "dir":
 		r = e.probeDirAtWithBaseline(target, word, baseline)
@@ -246,15 +267,9 @@ func (e *Engine) processAtWithBaseline(target, word string, depth int, baseline 
 	default:
 		r = Result{Type: e.cfg.Mode, Error: "unknown mode: " + e.cfg.Mode}
 	}
+
 	r.Depth = depth
 	return r
-}
-
-func (e *Engine) emitOutputs() {
-	enc := json.NewEncoder(os.Stdout)
-	for item := range e.output {
-		_ = enc.Encode(item)
-	}
 }
 
 func loadWordlist(path string) ([]string, error) {
@@ -266,11 +281,13 @@ func loadWordlist(path string) ([]string, error) {
 
 	var words []string
 	scanner := bufio.NewScanner(f)
+
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 		if line != "" && !strings.HasPrefix(line, "#") {
 			words = append(words, line)
 		}
 	}
+
 	return words, scanner.Err()
 }
