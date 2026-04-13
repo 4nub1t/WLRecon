@@ -20,7 +20,7 @@ BANNER = """
 
 MENU = """
 \033[1;37m  +---------------------------------------+
-  |           SELECT MODULE             |
+  |           SELECT MODULE               |
   +---------------------------------------+
   |  \033[1;32m[1]\033[1;37m  Email Enumeration               |
   |  \033[1;32m[2]\033[1;37m  Username Enumeration            |
