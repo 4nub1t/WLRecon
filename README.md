@@ -73,13 +73,28 @@ Go Engine  ──NDJSON──►  Python Parser  ──formatted──►  Termi
 
 ## Installation
 
+### 1. Install Go (if not installed)
+
 ```bash
-git clone https://github.com/4nub1t/wlrecon.git
-cd wlrecon
+# Linux (Debian/Ubuntu)
+sudo apt install golang-go
+
+# Or download the latest version from the official site:
+# https://go.dev/dl/
+```
+
+> Verify installation: `go version` (requires Go 1.22+)
+
+### 2. Clone and set up
+
+```bash
+git clone https://github.com/4nub1t/WLRecon.git
+cd WLRecon
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 ```
+
 > On Windows: use `venv\Scripts\activate` instead.
 
 ---
