@@ -1,4 +1,6 @@
+import os
 import subprocess
+from datetime import datetime
 
 class UserEnumerator:
     def __init__(self, config, parser):
@@ -10,19 +12,31 @@ class UserEnumerator:
         if not ok:
             print(f"\033[1;31m[!] {err}\033[0m")
             return
+
+        self._setup_output()
         self._invoke(self._build_cmd())
 
+    def _setup_output(self):
+        output_dir  = self.config.get("output_dir")
+        output_file = self.config.get("output_file", "").strip()
+        fmt         = self.config.get("output_format", "txt").strip().lower()
+
+        os.makedirs(output_dir, exist_ok=True)
+
+        if not output_file:
+            output_file = datetime.now().strftime("wlrecon_%Y%m%d_%H%M%S")
+
+        filepath = os.path.join(output_dir, f"{output_file}.{fmt}")
+        self.parser.configure_output(filepath, fmt, {
+            "target":   self.config.get("target"),
+            "wordlist": self.config.get("wordlist"),
+            "mode":     "user",
+        })
+
     def _build_cmd(self) -> list[str]:
-        mode_map = {
-            "DirEnumerator": "dir",
-            "EndpointEnumerator": "endpoint",
-            "UserEnumerator": "user",
-            "EmailEnumerator": "email",
-        }
-        mode = mode_map.get(self.__class__.__name__, "dir")
         cmd = [
             self.config.get("engine_path"),
-            "-mode", mode,
+            "-mode", "user",
             "-target", self.config.get("target"),
             "-wordlist", self.config.get("wordlist"),
             "-threads", self.config.get("threads"),
