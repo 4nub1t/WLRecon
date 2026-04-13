@@ -7,7 +7,7 @@
  ██║███╗██║██║     ██╔══██╗██╔══╝  ██║     ██║   ██║██║╚██╗██║
  ╚███╔███╔╝███████╗██║  ██║███████╗╚██████╗╚██████╔╝██║ ╚████║
   ╚══╝╚══╝ ╚══════╝╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚═════╝ ╚═╝  ╚═══╝
-  Wordlist Recon Framework  |  made by 4nub1t  |  v1.0.0
+  Wordlist Recon Framework  |  made by 4nub1t  |  v1.1.0
 ```
 
 > **For authorized penetration testing, CTFs, labs (TryHackMe, HackTheBox, OSCP), and educational use only.**
