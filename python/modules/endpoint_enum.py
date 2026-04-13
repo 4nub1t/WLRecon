@@ -10,32 +10,39 @@ class EndpointEnumerator:
         if not ok:
             print(f"\033[1;31m[!] {err}\033[0m")
             return
-
-        cmd = self._build_cmd()
-        self._invoke(cmd)
+        self._invoke(self._build_cmd())
 
     def _build_cmd(self) -> list[str]:
+        mode_map = {
+            "DirEnumerator": "dir",
+            "EndpointEnumerator": "endpoint",
+            "UserEnumerator": "user",
+            "EmailEnumerator": "email",
+        }
+        mode = mode_map.get(self.__class__.__name__, "dir")
         cmd = [
             self.config.get("engine_path"),
-            "-mode", "endpoint",
+            "-mode", mode,
             "-target", self.config.get("target"),
             "-wordlist", self.config.get("wordlist"),
             "-threads", self.config.get("threads"),
             "-timeout", self.config.get("timeout"),
         ]
-        proxy = self.config.get("proxy")
-        if proxy:
-            cmd += ["-proxy", proxy]
+        if self.config.get("proxy"):
+            cmd += ["-proxy", self.config.get("proxy")]
+        if self.config.get("match_string"):
+            cmd += ["-match-string", self.config.get("match_string")]
+        if self.config.get("invalid_string"):
+            cmd += ["-invalid-string", self.config.get("invalid_string")]
+        if self.config.get("extra_headers"):
+            cmd += ["-headers", self.config.get("extra_headers")]
+        if self.config.get("extra_params"):
+            cmd += ["-params", self.config.get("extra_params")]
         return cmd
 
     def _invoke(self, cmd: list[str]):
         try:
-            proc = subprocess.Popen(
-                cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-            )
+            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
             for line in proc.stdout:
                 data = self.parser.parse_line(line)
                 if data:

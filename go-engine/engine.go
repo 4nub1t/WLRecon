@@ -12,20 +12,25 @@ import (
 )
 
 type EngineConfig struct {
-	Mode     string
-	Target   string
-	Wordlist string
-	Threads  int
-	Timeout  int
-	Proxy    string
+	Mode          string
+	Target        string
+	Wordlist      string
+	Threads       int
+	Timeout       int
+	Proxy         string
+	MatchString   string
+	InvalidString string
+	ExtraHeaders  string
+	ExtraParams   string
 }
 
 type Result struct {
-	Type      string `json:"type"`
-	Result    string `json:"result"`
-	Status    int    `json:"status,omitempty"`
-	Found     bool   `json:"found"`
-	Error     string `json:"error,omitempty"`
+	Type   string `json:"type"`
+	Result string `json:"result"`
+	Status int    `json:"status,omitempty"`
+	Length int64  `json:"length,omitempty"`
+	Found  bool   `json:"found"`
+	Error  string `json:"error,omitempty"`
 }
 
 type ProgressResult struct {
@@ -41,17 +46,24 @@ type SummaryResult struct {
 	ElapsedMs  int64  `json:"elapsed_ms"`
 }
 
+type BaselineResponse struct {
+	Status int
+	Length int64
+	Body   string
+}
+
 type Engine struct {
-	cfg    EngineConfig
-	client *HTTPClient
-	output chan interface{}
-	mu     sync.Mutex
+	cfg      EngineConfig
+	client   *HTTPClient
+	output   chan interface{}
+	baseline BaselineResponse
+	mu       sync.Mutex
 }
 
 func NewEngine(cfg EngineConfig) *Engine {
 	return &Engine{
 		cfg:    cfg,
-		client: NewHTTPClient(cfg.Timeout, cfg.Proxy),
+		client: NewHTTPClient(cfg.Timeout, cfg.Proxy, cfg.ExtraHeaders),
 		output: make(chan interface{}, 512),
 	}
 }
@@ -62,10 +74,16 @@ func (e *Engine) Run() error {
 		return fmt.Errorf("loading wordlist: %w", err)
 	}
 
-	total      := len(words)
+	baseline, err := e.calibrate()
+	if err != nil {
+		baseline = BaselineResponse{Status: 404, Length: -1, Body: ""}
+	}
+	e.baseline = baseline
+
+	total := len(words)
 	var counter atomic.Int64
-	var found   atomic.Int64
-	start       := time.Now()
+	var found atomic.Int64
+	start := time.Now()
 
 	jobs := make(chan string, e.cfg.Threads*2)
 	var wg sync.WaitGroup
@@ -111,6 +129,48 @@ func (e *Engine) Run() error {
 
 	close(e.output)
 	return nil
+}
+
+func (e *Engine) calibrate() (BaselineResponse, error) {
+	probe := joinURL(e.cfg.Target, "wlrecon_probe_xzqq_invalid_9f3k")
+	status, length, body, err := e.client.GetWithBody(probe)
+	if err != nil {
+		return BaselineResponse{}, err
+	}
+	return BaselineResponse{Status: status, Length: length, Body: body}, nil
+}
+
+// isHit decides if a response is a valid find using three strategies:
+// 1. match-string: body must contain the match string
+// 2. invalid-string: body must NOT contain the invalid string
+// 3. baseline diff: status or length differs from baseline
+func (e *Engine) isHit(status int, length int64, body string) bool {
+	ms := e.cfg.MatchString
+	is := e.cfg.InvalidString
+
+	if ms != "" {
+		return strings.Contains(body, ms)
+	}
+
+	if is != "" {
+		return !strings.Contains(body, is)
+	}
+
+	return e.differsFromBaseline(status, length)
+}
+
+func (e *Engine) differsFromBaseline(status int, length int64) bool {
+	if status != e.baseline.Status {
+		return true
+	}
+	if e.baseline.Length >= 0 {
+		diff := length - e.baseline.Length
+		if diff < 0 {
+			diff = -diff
+		}
+		return diff > 50
+	}
+	return false
 }
 
 func (e *Engine) process(word string) Result {

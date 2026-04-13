@@ -8,6 +8,10 @@ class Config:
             "threads": "50",
             "proxy": "",
             "timeout": "10",
+            "match_string": "",
+            "invalid_string": "",
+            "extra_headers": "",
+            "extra_params": "",
             "engine_path": os.path.join(
                 os.path.dirname(os.path.dirname(__file__)),
                 "go-engine",
