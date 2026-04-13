@@ -22,6 +22,7 @@ type EngineConfig struct {
 	InvalidString string
 	ExtraHeaders  string
 	ExtraParams   string
+	TLSSkip       bool
 }
 
 type Result struct {
@@ -63,7 +64,7 @@ type Engine struct {
 func NewEngine(cfg EngineConfig) *Engine {
 	return &Engine{
 		cfg:    cfg,
-		client: NewHTTPClient(cfg.Timeout, cfg.Proxy, cfg.ExtraHeaders),
+		client: NewHTTPClient(cfg.Timeout, cfg.Proxy, cfg.ExtraHeaders, cfg.TLSSkip),
 		output: make(chan interface{}, 512),
 	}
 }
@@ -140,10 +141,6 @@ func (e *Engine) calibrate() (BaselineResponse, error) {
 	return BaselineResponse{Status: status, Length: length, Body: body}, nil
 }
 
-// isHit decides if a response is a valid find using three strategies:
-// 1. match-string: body must contain the match string
-// 2. invalid-string: body must NOT contain the invalid string
-// 3. baseline diff: status or length differs from baseline
 func (e *Engine) isHit(status int, length int64, body string) bool {
 	ms := e.cfg.MatchString
 	is := e.cfg.InvalidString
@@ -151,11 +148,9 @@ func (e *Engine) isHit(status int, length int64, body string) bool {
 	if ms != "" {
 		return strings.Contains(body, ms)
 	}
-
 	if is != "" {
 		return !strings.Contains(body, is)
 	}
-
 	return e.differsFromBaseline(status, length)
 }
 
