@@ -19,17 +19,37 @@ BANNER = """
 \033[0m\033[0;37m  Wordlist Recon Framework  |  made by \033[1;32m4nub1t\033[0m\033[0;37m  |  v1.1.0\033[0m
 """
 
-MENU = """
-\033[1;37m  +---------------------------------------+
-  |           SELECT MODULE               |
-  +---------------------------------------+
-  |  \033[1;32m[1]\033[1;37m  Email Enumeration      |
-  |  \033[1;32m[2]\033[1;37m  Username Enumeration   |
-  |  \033[1;32m[3]\033[1;37m  Directory Bruteforce   |
-  |  \033[1;32m[4]\033[1;37m  Endpoint Discovery     |
-  |  \033[1;31m[0]\033[1;37m  Exit                   |
-  +---------------------------------------+
-\033[0m"""
+_ANSI_RE = re.compile(r'\033\[[0-9;]*m')
+
+def _strip_ansi(s: str) -> int:
+    """Devuelve la longitud visible (sin códigos ANSI) de un string."""
+    return len(_ANSI_RE.sub('', s))
+
+def _build_menu() -> str:
+    INNER_W = 41  # ancho interior visible entre | y |
+
+    def row(content: str) -> str:
+        visible_len = _strip_ansi(content)
+        padding = INNER_W - visible_len - 1  # -1 por el espacio antes del |
+        return f"  \033[1;37m|\033[0m {content}{' ' * padding}\033[1;37m|"
+
+    border = "  \033[1;37m+" + "-" * INNER_W + "+\033[0m"
+
+    lines = [
+        border,
+        row("\033[1;37m          SELECT MODULE"),
+        border,
+        row("  \033[1;32m[1]\033[1;37m  Email Enumeration"),
+        row("  \033[1;32m[2]\033[1;37m  Username Enumeration"),
+        row("  \033[1;32m[3]\033[1;37m  Directory Bruteforce"),
+        row("  \033[1;32m[4]\033[1;37m  Endpoint Discovery"),
+        row("  \033[1;31m[0]\033[1;37m  Exit"),
+        border,
+    ]
+    return "\n" + "\n".join(lines) + "\n"
+
+MENU = _build_menu()
+
 
 def _normalize_headers(raw: str) -> str:
     """Acepta 'Key:Value,Key2:Value2' o formato dict Python "'Key': 'Value', ..." """
