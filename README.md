@@ -150,6 +150,84 @@ Then provide:
 
 ---
 
+## Advanced Detection Mode
+
+By default WLRecon uses **baseline auto-detection** — it probes the target with a guaranteed-invalid word and compares all subsequent responses against that baseline (status code + response length).
+
+For targets that always return HTTP 200 with error messages in the response body (common in CTF labs and custom login forms), use the string-based detection options:
+
+### `match-string`
+Mark a result as **FOUND** if the response body contains this string.
+
+```
+match-string: Welcome back
+```
+
+Use when the server returns a known string only for valid results.
+
+### `invalid-string`
+Mark a result as **NOT FOUND** if the response body contains this string.
+
+```
+invalid-string: Email does not exist
+```
+
+Use when the server returns a known error string for invalid entries — WLRecon marks everything else as valid.
+
+### `extra-headers`
+Comma-separated list of additional HTTP headers. Useful for targets requiring `X-Requested-With`, `Referer`, or custom auth headers.
+
+```
+extra-headers: X-Requested-With:XMLHttpRequest,Referer:http://10.10.10.10/login
+```
+
+### `extra-params`
+Additional POST parameters appended to the request body. Useful for endpoints requiring extra fields like `function=login`.
+
+```
+extra-params: function=login
+```
+
+---
+
+### Example — TryHackMe verbose login lab
+
+Target: `http://enum.thm/labs/verbose_login/functions.php`
+
+```
+[*] Target Configuration
+    Target URL          : http://enum.thm/labs/verbose_login/functions.php
+    Wordlist path       : /usr/share/wordlists/usernames.txt
+    Threads [50]        : 50
+    Proxy [skip]        :
+    Timeout secs [10]   : 10
+
+[*] Detection Options
+    match-string  [skip]:
+    invalid-string[skip]: Email does not exist
+
+[*] Advanced Options
+    Extra headers : X-Requested-With:XMLHttpRequest,Referer:http://enum.thm/labs/verbose_login/
+    Extra params  : function=login
+```
+
+Output:
+```
+[+] VALID EMAIL: admin@enum.thm        200  [1842b]
+[+] VALID EMAIL: john@enum.thm         200  [1856b]
+
+-------------------------------------------------------
+  SCAN RESULTS SUMMARY
+-------------------------------------------------------
+
+  VALID EMAILS (2)
+  -----------------------------------------------------
+  > admin@enum.thm                    200  [1842b]
+  > john@enum.thm                     200  [1856b]
+
+-------------------------------------------------------
+  Tested: 2211   Found: 2   Time: 8431ms
+
 ## Output Format
 
 ```
@@ -240,82 +318,6 @@ eJPTv2 certified | OSCP preparation | CTF competitor
 
 ---
 
-## Advanced Detection Mode
 
-By default WLRecon uses **baseline auto-detection** — it probes the target with a guaranteed-invalid word and compares all subsequent responses against that baseline (status code + response length).
-
-For targets that always return HTTP 200 with error messages in the response body (common in CTF labs and custom login forms), use the string-based detection options:
-
-### `match-string`
-Mark a result as **FOUND** if the response body contains this string.
-
-```
-match-string: Welcome back
-```
-
-Use when the server returns a known string only for valid results.
-
-### `invalid-string`
-Mark a result as **NOT FOUND** if the response body contains this string.
-
-```
-invalid-string: Email does not exist
-```
-
-Use when the server returns a known error string for invalid entries — WLRecon marks everything else as valid.
-
-### `extra-headers`
-Comma-separated list of additional HTTP headers. Useful for targets requiring `X-Requested-With`, `Referer`, or custom auth headers.
-
-```
-extra-headers: X-Requested-With:XMLHttpRequest,Referer:http://10.10.10.10/login
-```
-
-### `extra-params`
-Additional POST parameters appended to the request body. Useful for endpoints requiring extra fields like `function=login`.
-
-```
-extra-params: function=login
-```
-
----
-
-### Example — TryHackMe verbose login lab
-
-Target: `http://enum.thm/labs/verbose_login/functions.php`
-
-```
-[*] Target Configuration
-    Target URL          : http://enum.thm/labs/verbose_login/functions.php
-    Wordlist path       : /usr/share/wordlists/usernames.txt
-    Threads [50]        : 50
-    Proxy [skip]        :
-    Timeout secs [10]   : 10
-
-[*] Detection Options
-    match-string  [skip]:
-    invalid-string[skip]: Email does not exist
-
-[*] Advanced Options
-    Extra headers : X-Requested-With:XMLHttpRequest,Referer:http://enum.thm/labs/verbose_login/
-    Extra params  : function=login
-```
-
-Output:
-```
-[+] VALID EMAIL: admin@enum.thm        200  [1842b]
-[+] VALID EMAIL: john@enum.thm         200  [1856b]
-
--------------------------------------------------------
-  SCAN RESULTS SUMMARY
--------------------------------------------------------
-
-  VALID EMAILS (2)
-  -----------------------------------------------------
-  > admin@enum.thm                    200  [1842b]
-  > john@enum.thm                     200  [1856b]
-
--------------------------------------------------------
-  Tested: 2211   Found: 2   Time: 8431ms
 -------------------------------------------------------
 ```
