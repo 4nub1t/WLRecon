@@ -12,20 +12,20 @@ import (
 )
 
 type EngineConfig struct {
-	Mode                string
-	Target              string
-	Wordlist            string
-	Threads             int
-	Timeout             int
-	Proxy               string
-	MatchString         string
-	InvalidString       string
-	ExtraHeaders        string
-	ExtraParams         string
-	TLSSkip             bool
-	Recursive           bool
-	MaxDepth            int
-	MaxRecursePerLevel  int
+	Mode               string
+	Target             string
+	Wordlist           string
+	Threads            int
+	Timeout            int
+	Proxy              string
+	MatchString        string
+	InvalidString      string
+	ExtraHeaders       string
+	ExtraParams        string
+	TLSSkip            bool
+	Recursive          bool
+	MaxDepth           int
+	MaxRecursePerLevel int // 0 = unlimited
 }
 
 type Result struct {
@@ -58,11 +58,12 @@ type BaselineResponse struct {
 }
 
 type Engine struct {
-	cfg     EngineConfig
-	client  *HTTPClient
-	output  chan interface{}
-	visited map[string]bool
-	mu      sync.Mutex
+	cfg          EngineConfig
+	client       *HTTPClient
+	output       chan interface{}
+	initBaseline BaselineResponse // set once in Run(), never modified — safe for user/email modes
+	visited      map[string]bool
+	mu           sync.Mutex
 }
 
 func NewEngine(cfg EngineConfig) *Engine {
@@ -84,6 +85,8 @@ func (e *Engine) Run() error {
 	if err != nil {
 		baseline = BaselineResponse{Status: 404, Length: -1, Body: ""}
 	}
+	// Store as read-only initial baseline for user/email modes
+	e.initBaseline = baseline
 
 	start := time.Now()
 	go e.emitOutputs()
@@ -110,6 +113,7 @@ func (e *Engine) scanTarget(target string, words []string, depth int, baseline B
 	e.visited[target] = true
 	e.mu.Unlock()
 
+	// Each recursive level gets its own baseline — no shared state, no race conditions
 	if depth > 0 {
 		if b, err := e.calibrate(target); err == nil {
 			baseline = b
@@ -175,6 +179,7 @@ func (e *Engine) scanTarget(target string, words []string, depth int, baseline B
 	return total, found.Load()
 }
 
+// isRecursable — 403 excluded intentionally to avoid recursing into .htaccess/.htpasswd etc.
 func isRecursable(status int) bool {
 	switch status {
 	case 200, 301, 302, 307:
@@ -192,6 +197,12 @@ func (e *Engine) calibrate(target string) (BaselineResponse, error) {
 	return BaselineResponse{Status: status, Length: length, Body: body}, nil
 }
 
+// isHit uses the initial baseline — safe for user/email modes (no recursion, no shared writes)
+func (e *Engine) isHit(status int, length int64, body string) bool {
+	return e.isHitWithBaseline(status, length, body, e.initBaseline)
+}
+
+// isHitWithBaseline uses a locally-scoped baseline — safe for concurrent dir/endpoint scanning
 func (e *Engine) isHitWithBaseline(status int, length int64, body string, baseline BaselineResponse) bool {
 	ms := e.cfg.MatchString
 	is := e.cfg.InvalidString
