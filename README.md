@@ -76,8 +76,11 @@ Go Engine  ──NDJSON──►  Python Parser  ──formatted──►  Termi
 ```bash
 git clone https://github.com/4nub1t/wlrecon.git
 cd wlrecon
+python3 -m venv venv
+source venv/bin/activate
 pip install -r requirements.txt
 ```
+> On Windows: use `venv\Scripts\activate` instead.
 
 ---
 
