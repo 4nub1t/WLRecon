@@ -12,19 +12,20 @@ import (
 )
 
 type EngineConfig struct {
-	Mode          string
-	Target        string
-	Wordlist      string
-	Threads       int
-	Timeout       int
-	Proxy         string
-	MatchString   string
-	InvalidString string
-	ExtraHeaders  string
-	ExtraParams   string
-	TLSSkip       bool
-	Recursive     bool
-	MaxDepth      int
+	Mode                string
+	Target              string
+	Wordlist            string
+	Threads             int
+	Timeout             int
+	Proxy               string
+	MatchString         string
+	InvalidString       string
+	ExtraHeaders        string
+	ExtraParams         string
+	TLSSkip             bool
+	Recursive           bool
+	MaxDepth            int
+	MaxRecursePerLevel  int
 }
 
 type Result struct {
@@ -137,7 +138,8 @@ func (e *Engine) scanTarget(target string, words []string, depth int, baseline B
 						if isRecursable(result.Status) {
 							newTarget := strings.TrimRight(target, "/") + result.Result
 							recurseMu.Lock()
-							if len(recurseTargets) < 50 {
+							limit := e.cfg.MaxRecursePerLevel
+							if limit == 0 || len(recurseTargets) < limit {
 								recurseTargets = append(recurseTargets, newTarget)
 							}
 							recurseMu.Unlock()
