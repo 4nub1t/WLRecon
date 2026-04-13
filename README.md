@@ -1,5 +1,10 @@
 # WLRecon — Wordlist Recon Framework
 
+![Python](https://img.shields.io/badge/Python-3.11+-blue)
+![Go](https://img.shields.io/badge/Go-1.22+-00ADD8)
+![License](https://img.shields.io/badge/Use-Authorized%20Only-red)
+![Status](https://img.shields.io/badge/Status-Active-success)
+
 ```
  ██╗    ██╗██╗     ██████╗ ███████╗ ██████╗ ██████╗ ███╗   ██╗
  ██║    ██║██║     ██╔══██╗██╔════╝██╔════╝██╔═══██╗████╗  ██║
@@ -22,6 +27,20 @@ It is **not a script**. It is a two-layer architecture:
 
 - **Python Orchestration Layer** — CLI interface, user interaction, configuration, output formatting, module coordination.
 - **Go High-Performance Engine** — all HTTP fuzzing and enumeration, goroutine-based concurrency, structured JSON output.
+
+---
+
+## Key Features
+
+- High-performance concurrent fuzzing (Go goroutines)
+- NDJSON streaming pipeline (real-time parsing)
+- Recursive directory and endpoint enumeration
+- Automatic baseline response detection
+- Flexible detection (match-string / invalid-string)
+- Multi-format output (txt, json, csv, xml)
+- Proxy support (Burp Suite integration)
+- TLS verification bypass for lab environments
+- Configurable endpoint probing patterns (default: /api/<word>)
 
 ---
 
@@ -145,7 +164,7 @@ Then provide:
 **Hit criteria:** HTTP 200, 201, 204, 301, 302, 307, 308, 401, 403.
 
 ### [4] Endpoint Discovery
-**Target:** Base URL. Paths are probed under `/api/<word>`.  
+**Target:** Base URL. Endpoints are discovered by probing under `/api/<word>` by default (configurable in `worker.go`).  
 **Example target:** `http://10.10.10.10`
 
 ---
@@ -159,7 +178,7 @@ For targets that always return HTTP 200 with error messages in the response body
 ### `match-string`
 Mark a result as **FOUND** if the response body contains this string.
 
-```
+```bash
 match-string: Welcome back
 ```
 
@@ -168,7 +187,7 @@ Use when the server returns a known string only for valid results.
 ### `invalid-string`
 Mark a result as **NOT FOUND** if the response body contains this string.
 
-```
+```bash
 invalid-string: Email does not exist
 ```
 
@@ -177,55 +196,188 @@ Use when the server returns a known error string for invalid entries — WLRecon
 ### `extra-headers`
 Comma-separated list of additional HTTP headers. Useful for targets requiring `X-Requested-With`, `Referer`, or custom auth headers.
 
-```
+```bash
 extra-headers: X-Requested-With:XMLHttpRequest,Referer:http://10.10.10.10/login
 ```
 
 ### `extra-params`
 Additional POST parameters appended to the request body. Useful for endpoints requiring extra fields like `function=login`.
 
-```
+```bash
 extra-params: function=login
 ```
 
 ---
 
-## Example — Email enumeration on a verbose login endpoint
+## TLS Options
 
-### Target: http://192.168.1.100/portal/auth.php
+WLRecon now supports skipping TLS certificate verification when targeting HTTPS services with self-signed or invalid certificates.
 
+Prompt
+
+```bash
+Skip TLS verification? [y/N]
 ```
+**Use cases**
+- OSCP labs
+- HackTheBox / TryHackMe environments
+- Internal staging environments
+- Self-signed certificates
+
+---
+
+## Recursive Scanning
+
+Directory and endpoint enumeration modules now support automatic recursive scanning of discovered paths.
+
+Prompt
+
+```bash
+Enable recursive scan? [y/N]
+Max depth [3]
+```
+
+**Behavior**
+- Recursion is triggered on valid discovered directories/endpoints
+- Each recursion level increases scan depth
+- Results include depth annotation
+
+Output format
+
+```bash
+/admin
+/admin/login (depth:1)
+/admin/panel (depth:2)
+```
+
+**Supported modules**
+- Directory Bruteforce
+- Endpoint Discovery
+  
+**Not supported**
+- Username enumeration
+- Email enumeration
+
+---
+
+## Output
+
+WLRecon automatically saves scan results to the output/ directory upon completion.
+
+Prompt
+
+```bash
+Format [txt/json/csv/xml]
+Output filename [wlrecon_<timestamp>]
+```
+
+**Behavior**
+- Default filename: wlrecon_<timestamp>
+- Extension is appended automatically based on selected format
+- Output location: ./output/
+
+### Example: TXT output
+
+```bash
+
+Example: TXT output
+
+```bash
+DIRECTORIES / PATHS
+--------------------
+/admin        200
+/login        302
+/phpmyadmin   403
+```
+
+### Example: JSON output
+
+```json
+{
+  "meta": {
+    "target": "http://example.com",
+    "mode": "dir",
+    "total_tested": 1000,
+    "found_count": 12,
+    "elapsed_ms": 4200
+  },
+  "results": [
+    {
+      "type": "dir",
+      "result": "/admin",
+      "status": 200,
+      "found": true
+    }
+  ]
+}
+```
+
+---
+
+## Example — Recursive Directory Bruteforce with Output
+
+### Target: http://192.168.1.150
+
+```bash
 [*] Target Configuration
-    Target URL          : http://192.168.1.100/portal/auth.php
-    Wordlist path       : /usr/share/seclists/Usernames/top-usernames-shortlist.txt
-    Threads [50]        : 30
+    Target URL          : http://192.168.1.150
+    Wordlist path       : /usr/share/wordlists/dirb/common.txt
+    Threads [50]        : 40
     Proxy [skip]        :
-    Timeout secs [10]   : 5
+    Timeout secs [10]   : 8
 
 [*] Detection Options
     match-string  [skip]:
-    invalid-string[skip]: Invalid email address
+    invalid-string[skip]:
 
 [*] Advanced Options
-    Extra headers : X-Requested-With:XMLHttpRequest,Referer:http://192.168.1.100/portal/
-    Extra params  : action=authenticate
+    Extra headers :
+    Extra params  :
 
-Output:
-[+] VALID EMAIL: alice@corp.local          200  [2104b]
-[+] VALID EMAIL: bob@corp.local            200  [2098b]
+[*] HTTPS Options
+    Skip TLS verification? [y/N]: N
+
+[*] Recursive Options
+    Enable recursive scan? [y/N]: y
+    Max depth [3]       : 2
+
+[*] Output Options
+    Format [txt/json/csv/xml] (default: txt): json
+    Output filename [wlrecon_20260413_230000]: internal_scan
+
+[*] Starting module...
+
+[+] FOUND:       /admin              200 [1452b]
+[+] FOUND:       /login              302 [512b]
+[+] FOUND:       /backup             403 [298b]
+[+] FOUND:       /api                200 [2048b]
+[+] FOUND:       /admin/panel        200 [5321b] (depth:1)
+[+] FOUND:       /admin/config       403 [301b]  (depth:1)
+[+] FOUND:       /api/v1             200 [4123b] (depth:1)
+[+] FOUND:       /api/v1/users       200 [6123b] (depth:2)
+
+[~] Progress: 5230/5230 (100.0%)
 
 -------------------------------------------------------
   SCAN RESULTS SUMMARY
 -------------------------------------------------------
 
-  VALID EMAILS (2)
+  DIRECTORIES / PATHS (8)
   -----------------------------------------------------
-  > alice@corp.local                      200  [2104b]
-  > bob@corp.local                        200  [2098b]
+  > /admin                             200  [1452b]
+  > /login                             302  [512b]
+  > /backup                            403  [298b]
+  > /api                               200  [2048b]
+  > /admin/panel                       200  [5321b]  depth:1
+  > /admin/config                      403  [301b]   depth:1
+  > /api/v1                            200  [4123b]  depth:1
+  > /api/v1/users                      200  [6123b]  depth:2
 
 -------------------------------------------------------
-  Tested: 1850   Found: 2   Time: 6213ms
+  Tested: 5230   Found: 8   Time: 8421ms
 -------------------------------------------------------
+
+[*] Output saved to: ./output/internal_scan.json
 ```
 
 ---
@@ -264,25 +416,20 @@ Python parses each JSON line and applies ANSI-colored formatting.
 
 ## Limitations
 
-- Username/email enumeration accuracy depends on the target's HTTP response behaviour. There is no universal heuristic — tune per target.
-- Endpoint discovery uses `/api/<word>` prefix by default. For custom paths, modify `worker.go` `probeEndpoint()`.
-- No HTTPS certificate verification bypass is implemented by default (intentional for safety).
-- Rate limiting or WAFs on the target may reduce accuracy. Use lower thread counts and add delays if needed.
-- No built-in output-to-file feature yet (pipe stdout to a file if needed).
+- Accuracy depends on target HTTP response behavior
+- Endpoint discovery uses /api/<word> pattern by default
+- Recursive scanning only applies to directory and endpoint modules
+- WAF/rate limiting may reduce scan effectiveness
 
 ---
 
 ## Future Improvements
 
-- [ ] Output to file (`-output result.txt`)
-- [ ] Custom status code filter (`-fc 404,400`)
-- [ ] Response size/word/line-based filtering (like ffuf)
-- [ ] HTTPS with custom CA / TLS skip flag
-- [ ] Custom HTTP headers support
-- [ ] Rate limiting with configurable delay between requests
-- [ ] Recursive directory bruteforce
+- [ ] Status code filtering (include/exclude codes)
+- [ ] Response size filtering (bytes, words, lines)
+- [ ] Rate limiting with delay between requests
 - [ ] Follow-redirect toggle
-- [ ] JSON report export for documentation
+- [ ] Advanced WAF evasion techniques
 
 ---
 
@@ -298,11 +445,17 @@ eJPTv2 certified | OSCP preparation | CTF competitor
 
 > WLRecon is developed for **authorized penetration testing**, **CTF competitions**, **educational labs** (TryHackMe, HackTheBox, OSCP), and **controlled security research environments only**.
 >
-> Using this tool against systems without explicit written permission from the system owner is **illegal** under computer crime laws in most jurisdictions (CFAA, Computer Misuse Act, etc.).
+> Using this tool against systems without **explicit written permission** from the system owner is **illegal** under computer crime laws in most jurisdictions (e.g. CFAA, Computer Misuse Act).
 >
-> The author assumes **no responsibility or liability** for any misuse, damage, or legal consequences arising from the use of this tool outside of authorized contexts.
->
-> **You are solely responsible for ensuring you have legal authorization before running any scan.**
+> The author assumes **no responsibility or liability** for any misuse, damage, or legal consequences arising from the use of this tool.
+
+### By using WLRecon, you agree that:
+
+- you have proper authorization before testing any target  
+- you understand and comply with applicable laws and regulations  
+- you take full responsibility for your actions  
+
+**Use responsibly.**
 
 ---
 
