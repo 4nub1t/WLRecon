@@ -236,7 +236,6 @@ func (e *Engine) process(target, word string, depth int, baseline BaselineRespon
 
 func (e *Engine) isHit(status int, length int64, body string) bool {
 
-	// AUTH MODES → NO baseline logic
 	if e.cfg.Mode == "user" || e.cfg.Mode == "email" {
 
 		if e.cfg.InvalidString != "" {
@@ -247,7 +246,6 @@ func (e *Engine) isHit(status int, length int64, body string) bool {
 			return strings.Contains(body, e.cfg.MatchString)
 		}
 
-		// safer fallback (avoid 100% false positives)
 		return status >= 200 && status < 300 && length > 0
 	}
 
