@@ -30,17 +30,17 @@ It is **not a script**. It is a two-layer architecture:
 
 ---
 
-## Key Features
+## Why WLRecon?
+
+Unlike traditional tools, WLRecon provides:
 
 - High-performance concurrent fuzzing (Go goroutines)
-- NDJSON streaming pipeline (real-time parsing)
-- Recursive directory and endpoint enumeration
-- Automatic baseline response detection
-- Flexible detection (match-string / invalid-string)
-- Multi-format output (txt, json, csv, xml)
+- Real-time streaming results via NDJSON
+- Intelligent detection for dynamic applications
+- Modular architecture for multiple recon techniques
+- Recursive scanning with depth tracking
 - Proxy support (Burp Suite integration)
-- TLS verification bypass for lab environments
-- Configurable endpoint probing patterns (default: /api/<word>)
+- Multi-format output (txt, json, csv, xml)
 
 ---
 
