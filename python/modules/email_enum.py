@@ -41,8 +41,8 @@ class EmailEnumerator:
             "-mode",    "email",
             "-target",  self.config.get("target"),
             "-wordlist", self.config.get("wordlist"),
-            "-threads", str(self.config.get("threads")),   # ← fix
-            "-timeout", str(self.config.get("timeout")),   # ← fix
+            "-threads", str(self.config.get("threads")),   
+            "-timeout", str(self.config.get("timeout")),  
         ]
         if self.config.get("proxy"):
             cmd += ["-proxy", self.config.get("proxy")]
