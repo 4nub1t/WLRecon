@@ -13,7 +13,7 @@ func (e *Engine) probeDirAtWithBaseline(target, word string, baseline BaselineRe
 		return Result{Type: "dir", Result: "/" + word, Found: false}
 	}
 
-	path := strings.TrimPrefix(fullURL, strings.TrimRight(e.cfg.Target, "/"))
+	path := strings.TrimPrefix(fullURL, strings.TrimRight(target, "/")) // ← fix
 	if path == "" || path[0] != '/' {
 		path = "/" + path
 	}
@@ -32,7 +32,7 @@ func (e *Engine) probeDirAtWithBaseline(target, word string, baseline BaselineRe
 func (e *Engine) probeEndpointAtWithBaseline(target, word string, baseline BaselineResponse) Result {
 	candidate := word
 	if !strings.HasPrefix(word, "/") {
-		candidate = "/api/" + word
+		candidate = "/" + word // ← fix: sin /api/ hardcoded
 	}
 
 	fullURL := strings.TrimRight(target, "/") + candidate
@@ -41,7 +41,7 @@ func (e *Engine) probeEndpointAtWithBaseline(target, word string, baseline Basel
 		return Result{Type: "endpoint", Result: candidate, Found: false}
 	}
 
-	path := strings.TrimPrefix(fullURL, strings.TrimRight(e.cfg.Target, "/"))
+	path := strings.TrimPrefix(fullURL, strings.TrimRight(target, "/")) // ← fix
 	if path == "" || path[0] != '/' {
 		path = "/" + path
 	}
