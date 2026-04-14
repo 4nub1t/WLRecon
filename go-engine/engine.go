@@ -161,7 +161,7 @@ func (e *Engine) scanTarget(target string, words []string, depth int, baseline B
 
 					if e.cfg.Recursive && depth < e.cfg.MaxDepth {
 						if isRecursable(result.Status) {
-							newTarget := strings.TrimRight(target, "/") + result.Result
+							newTarget := strings.TrimRight(e.cfg.Target, "/") + result.Result
 
 							recurseMu.Lock()
 							if e.cfg.MaxRecursePerLevel == 0 || len(recurseTargets) < e.cfg.MaxRecursePerLevel {
