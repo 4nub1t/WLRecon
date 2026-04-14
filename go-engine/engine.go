@@ -202,7 +202,6 @@ func (e *Engine) scanTarget(target string, words []string, depth int, baseline B
 	return total, found.Load()
 }
 
-
 func (e *Engine) process(target, word string, depth int, baseline BaselineResponse) Result {
 	word = strings.TrimSpace(word)
 	if word == "" || strings.HasPrefix(word, "#") {
@@ -232,7 +231,6 @@ func (e *Engine) process(target, word string, depth int, baseline BaselineRespon
 	r.Depth = depth
 	return r
 }
-
 
 func (e *Engine) isHit(status int, length int64, body string) bool {
 
@@ -277,6 +275,20 @@ func (e *Engine) isHitWithBaseline(status int, length int64, body string, baseli
 	return false
 }
 
+func (e *Engine) calibrate(target string) (BaselineResponse, error) {
+	probe := strings.TrimRight(target, "/") + "/wlrecon-calibrate-xzqk9f2a"
+
+	status, length, body, err := e.client.GetWithBody(probe)
+	if err != nil {
+		return BaselineResponse{}, fmt.Errorf("calibrate: %w", err)
+	}
+
+	return BaselineResponse{
+		Status: status,
+		Length: length,
+		Body:   body,
+	}, nil
+}
 
 func isBaselineMode(mode string) bool {
 	return mode == "dir" || mode == "endpoint"
