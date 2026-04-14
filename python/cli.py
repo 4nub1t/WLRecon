@@ -20,18 +20,17 @@ BANNER = """
 \033[0m\033[0;37m  Wordlist Recon Framework  |  made by \033[1;32m4nub1t\033[0m\033[0;37m  |  v1.1.0\033[0m
 """
 
-_ANSI_RE = re.compile(r'\033\[[0-9;]*m')
+_ANSI_RE = re.compile(r'\\033\\[[0-9;]*m')
 
 def _strip_ansi(s: str) -> int:
-    """Devuelve la longitud visible (sin códigos ANSI) de un string."""
     return len(_ANSI_RE.sub('', s))
 
 def _build_menu() -> str:
-    INNER_W = 41  
+    INNER_W = 41
 
     def row(content: str) -> str:
         visible_len = _strip_ansi(content)
-        padding = INNER_W - visible_len - 1 
+        padding = INNER_W - visible_len - 1
         return f"  \033[1;37m|\033[0m {content}{' ' * padding}\033[1;37m|"
 
     border = "  \033[1;37m+" + "-" * INNER_W + "+\033[0m"
@@ -53,7 +52,6 @@ MENU = _build_menu()
 
 
 def _normalize_headers(raw: str) -> str:
-    """Acepta 'Key:Value,Key2:Value2' o formato dict Python "'Key': 'Value', ..." """
     if not raw:
         return ""
     if "': '" in raw or '": "' in raw:
@@ -63,7 +61,6 @@ def _normalize_headers(raw: str) -> str:
 
 
 def _normalize_params(raw: str) -> str:
-    """Acepta 'key=value,key2=value2' o formato dict Python "'key': 'value', ..." """
     if not raw:
         return ""
     if "': '" in raw or '": "' in raw:
@@ -94,18 +91,18 @@ class CLI:
         proxy    = input("\033[0;37m    Proxy [skip]        : \033[0m").strip()
         timeout  = input("\033[0;37m    Timeout secs [10]   : \033[0m").strip() or "10"
 
-        self.config.set("target", target)
+        self.config.set("target",   target)
         self.config.set("wordlist", wordlist)
-        self.config.set("threads", threads)
-        self.config.set("proxy", proxy)
-        self.config.set("timeout", timeout)
+        self.config.set("threads",  int(threads))   
+        self.config.set("proxy",    proxy)
+        self.config.set("timeout",  int(timeout))  
 
         print("\n\033[1;33m[*] Detection Options (leave blank to use baseline auto-detection)\033[0m")
         print("\033[0;37m    match-string  : mark as FOUND if response body contains this string\033[0m")
         print("\033[0;37m    invalid-string: mark as NOT FOUND if response body contains this string\033[0m")
         match   = input("\033[0;37m    match-string  [skip]: \033[0m").strip()
         invalid = input("\033[0;37m    invalid-string[skip]: \033[0m").strip()
-        self.config.set("match_string", match)
+        self.config.set("match_string",   match)
         self.config.set("invalid_string", invalid)
 
         print("\n\033[1;33m[*] Advanced Options (leave blank to skip)\033[0m")
@@ -123,8 +120,10 @@ class CLI:
         recursive = input("\033[0;37m    Enable recursive scan? [y/N]: \033[0m").strip().lower()
         self.config.set("recursive", recursive == "y")
         if recursive == "y":
-            depth = input("\033[0;37m    Max depth [3]       : \033[0m").strip() or "3"
-            self.config.set("max_depth", depth)
+            depth = input("\033[0;37m    Max depth [3]             : \033[0m").strip() or "3"
+            max_r = input("\033[0;37m    Max recurse per level [30]: \033[0m").strip() or "30"   
+            self.config.set("max_depth",             int(depth))
+            self.config.set("max_recurse_per_level", int(max_r))
 
         print("\n\033[1;33m[*] Output Options\033[0m")
         fmt = input("\033[0;37m    Format [txt/json/csv/xml] (default: txt): \033[0m").strip().lower() or "txt"
@@ -133,7 +132,7 @@ class CLI:
         ts = datetime.now().strftime("wlrecon_%Y%m%d_%H%M%S")
         filename = input(f"\033[0;37m    Output filename [{ts}]: \033[0m").strip() or ts
         self.config.set("output_format", fmt)
-        self.config.set("output_file", filename)
+        self.config.set("output_file",   filename)
 
     def _run_module(self, key: str):
         mode_names = {"1": "email", "2": "user", "3": "dir", "4": "endpoint"}
