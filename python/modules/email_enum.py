@@ -1,6 +1,8 @@
 import os
 import subprocess
+import threading
 from datetime import datetime
+
 
 class EmailEnumerator:
     def __init__(self, config, parser):
@@ -33,14 +35,14 @@ class EmailEnumerator:
             "mode":     "email",
         })
 
-    def _build_cmd(self) -> list[str]:
+    def _build_cmd(self) -> list:
         cmd = [
             self.config.get("engine_path"),
-            "-mode", "email",
-            "-target", self.config.get("target"),
+            "-mode",    "email",
+            "-target",  self.config.get("target"),
             "-wordlist", self.config.get("wordlist"),
-            "-threads", self.config.get("threads"),
-            "-timeout", self.config.get("timeout"),
+            "-threads", str(self.config.get("threads")),   # ← fix
+            "-timeout", str(self.config.get("timeout")),   # ← fix
         ]
         if self.config.get("proxy"):
             cmd += ["-proxy", self.config.get("proxy")]
@@ -56,20 +58,37 @@ class EmailEnumerator:
             cmd += ["-tls-skip"]
         return cmd
 
-    def _invoke(self, cmd: list[str]):
+    def _invoke(self, cmd: list):
         try:
-            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            proc = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
+            )
+
+            stderr_lines = []
+            def drain_stderr():
+                for line in proc.stderr:
+                    stderr_lines.append(line)
+            t = threading.Thread(target=drain_stderr, daemon=True)
+            t.start()
+
             for line in proc.stdout:
                 data = self.parser.parse_line(line)
                 if data:
                     self.parser.print_result(data)
+
             proc.wait()
-            if proc.returncode != 0:
-                err = proc.stderr.read()
-                if err:
-                    print(f"\033[1;31m[!] Engine error: {err.strip()}\033[0m")
+            t.join()
+
+            if proc.returncode != 0 and stderr_lines:
+                err = "".join(stderr_lines).strip()
+                print(f"\033[1;31m[!] Engine error: {err}\033[0m")
+
         except FileNotFoundError:
             print(f"\033[1;31m[!] Engine binary not found. Build it first.\033[0m")
         except KeyboardInterrupt:
             proc.terminate()
-            print("\n\033[1;33m[!] Scan interrupted.\033[0m")
+            proc.wait()
+            print(f"\n\033[1;33m[!] Scan interrupted.\033[0m")
