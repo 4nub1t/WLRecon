@@ -1,6 +1,8 @@
 import os
 import subprocess
+import threading
 from datetime import datetime
+
 
 class DirEnumerator:
     def __init__(self, config, parser):
@@ -20,9 +22,13 @@ class DirEnumerator:
         output_dir  = self.config.get("output_dir")
         output_file = self.config.get("output_file", "").strip()
         fmt         = self.config.get("output_format", "txt").strip().lower()
-        mode_map    = {"DirEnumerator": "dir", "EndpointEnumerator": "endpoint",
-                       "UserEnumerator": "user", "EmailEnumerator": "email"}
-        mode        = mode_map.get(self.__class__.__name__, "dir")
+        mode_map    = {
+            "DirEnumerator":      "dir",
+            "EndpointEnumerator": "endpoint",
+            "UserEnumerator":     "user",
+            "EmailEnumerator":    "email",
+        }
+        mode = mode_map.get(self.__class__.__name__, "dir")
 
         os.makedirs(output_dir, exist_ok=True)
 
@@ -36,22 +42,24 @@ class DirEnumerator:
             "mode":     mode,
         })
 
-    def _build_cmd(self) -> list[str]:
+    def _build_cmd(self):
         mode_map = {
-            "DirEnumerator": "dir",
+            "DirEnumerator":      "dir",
             "EndpointEnumerator": "endpoint",
-            "UserEnumerator": "user",
-            "EmailEnumerator": "email",
+            "UserEnumerator":     "user",
+            "EmailEnumerator":    "email",
         }
         mode = mode_map.get(self.__class__.__name__, "dir")
+
         cmd = [
             self.config.get("engine_path"),
-            "-mode", mode,
-            "-target", self.config.get("target"),
+            "-mode",     mode,
+            "-target",   self.config.get("target"),
             "-wordlist", self.config.get("wordlist"),
-            "-threads", self.config.get("threads"),
-            "-timeout", self.config.get("timeout"),
+            "-threads",  str(self.config.get("threads")),  
+            "-timeout",  str(self.config.get("timeout")),   
         ]
+
         if self.config.get("proxy"):
             cmd += ["-proxy", self.config.get("proxy")]
         if self.config.get("match_string"):
@@ -64,24 +72,47 @@ class DirEnumerator:
             cmd += ["-params", self.config.get("extra_params")]
         if self.config.get("tls_skip"):
             cmd += ["-tls-skip"]
+
         if self.config.get("recursive") and mode in ("dir", "endpoint"):
-            cmd += ["-recursive", "-depth", self.config.get("max_depth", "3")]
+            cmd += [
+                "-recursive",
+                "-depth",        str(self.config.get("max_depth", 3)),          
+                "-max-recurse",  str(self.config.get("max_recurse_per_level", 30)),  
+            ]
+
         return cmd
 
-    def _invoke(self, cmd: list[str]):
+    def _invoke(self, cmd):
         try:
-            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            proc = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
+            )
+
+            stderr_lines = []
+            def drain_stderr():
+                for line in proc.stderr:
+                    stderr_lines.append(line)
+            t = threading.Thread(target=drain_stderr, daemon=True)
+            t.start()
+
             for line in proc.stdout:
                 data = self.parser.parse_line(line)
                 if data:
                     self.parser.print_result(data)
+
             proc.wait()
-            if proc.returncode != 0:
-                err = proc.stderr.read()
-                if err:
-                    print(f"\033[1;31m[!] Engine error: {err.strip()}\033[0m")
+            t.join()
+
+            if proc.returncode != 0 and stderr_lines:
+                err = "".join(stderr_lines).strip()
+                print(f"\033[1;31m[!] Engine error: {err}\033[0m")
+
         except FileNotFoundError:
             print(f"\033[1;31m[!] Engine binary not found. Build it first.\033[0m")
         except KeyboardInterrupt:
             proc.terminate()
-            print("\n\033[1;33m[!] Scan interrupted.\033[0m")
+            proc.wait()  
+            print(f"\n\033[1;33m[!] Scan interrupted.\033[0m")
