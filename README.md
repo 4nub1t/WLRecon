@@ -26,7 +26,7 @@ WLRecon is a high-performance, modular, hybrid reconnaissance framework designed
 It is **not a script**. It is a two-layer architecture:
 
 - **Python Orchestration Layer** — CLI interface, user interaction, configuration, output formatting, module coordination.
-- **Go High-Performance Engine** — all HTTP fuzzing and enumeration, goroutine-based concurrency, structured JSON output.
+- **Go High-Performance Engine** — all HTTP/HTTPS fuzzing and enumeration, goroutine-based concurrency, structured JSON output.
 
 ---
 
