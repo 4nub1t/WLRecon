@@ -20,7 +20,7 @@ BANNER = """
 \033[0m\033[0;37m  Wordlist Recon Framework  |  made by \033[1;32m4nub1t\033[0m\033[0;37m  |  v1.1.0\033[0m
 """
 
-_ANSI_RE = re.compile(r'\\033\\[[0-9;]*m')
+_ANSI_RE = re.compile('\033\[[0-9;]*m')
 
 def _strip_ansi(s: str) -> int:
     return len(_ANSI_RE.sub('', s))
